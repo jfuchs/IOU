@@ -18,9 +18,8 @@ private enum IOUState {
 
 class IOU<T> {
     
-    private(set) var error: ErrorType?
-    private(set) var value: T? = nil
-    
+    private var error: ErrorType?
+    private var value: T? = nil
     private var state: IOUState = .Pending
     private var onErrorObservers: [((ErrorType) -> Void, dispatch_queue_t?)] = []
     private var onValueObservers: [((T) -> Void, dispatch_queue_t?)] = []

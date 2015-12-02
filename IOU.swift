@@ -23,30 +23,12 @@ class IOU<T> {
     
     private var state: IOUState = .Pending
     private var onErrorObservers: [((ErrorType) -> Void, dispatch_queue_t?)] = []
-    private var onFinishObservers: [((T?, ErrorType?) -> Void, dispatch_queue_t?)] = []
     private var onValueObservers: [((T) -> Void, dispatch_queue_t?)] = []
     
     private lazy var serialQueue: dispatch_queue_t = {
         return dispatch_queue_create("us.oladipo.iou", DISPATCH_QUEUE_SERIAL)
-        }()
-        
-    // MARK:- Finish
+    }()
     
-    func onFinish(observer: (T?, ErrorType?) -> Void) -> IOU<T> {
-        return self.onFinish(nil, observer: observer)
-    }
-    
-    func onFinish(queue: dispatch_queue_t?, observer: (T?, ErrorType?) -> Void) -> IOU<T> {
-        let observers = self.onFinishObservers + [(observer, queue)]
-        self.onFinishObservers = observers
-        
-        if self.state != .Pending {
-            self.callAndRemoveObservers()
-        }
-        
-        return self
-    }
-
     // MARK:- Reject
     
     func onError(observer: (ErrorType) -> Void) -> IOU<T> {
@@ -170,23 +152,7 @@ class IOU<T> {
             }
         }
         
-        if self.state != .Pending {
-            for (observer, queue) in self.onFinishObservers {
-                
-                let closure = {
-                    observer(self.value, self.error)
-                }
-                
-                if let queue = queue {
-                    dispatch_async(queue, closure)
-                } else {
-                    closure()
-                }
-            }
-        }
-
         self.onErrorObservers = []
-        self.onFinishObservers = []
         self.onValueObservers = []
         
     }
@@ -199,17 +165,6 @@ public struct IOUHandler<T> {
     
     public init() {
         self.iou = IOU<T>()
-    }
-    
-    func mirror(iou: IOU<T>, queue: dispatch_queue_t? = nil) {
-        
-        iou.onError(queue) { error in
-            self.iou.reject(error)
-        }
-
-        iou.onValue(queue) { value in
-            self.iou.resolve(value)
-        }
     }
     
     func reject(error: ErrorType) {

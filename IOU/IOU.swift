@@ -113,10 +113,10 @@ class IOU<T> {
             if self.state == .Pending {
                 self.state = state
                 
-                if let value = value {
-                    self.value = value
-                } else if let error = error {
-                    self.error = error
+                if let uValue = value {
+                    self.value = uValue
+                } else if let uError = error {
+                    self.error = uError
                 }
             }
         }
@@ -130,8 +130,8 @@ class IOU<T> {
                     observer(self.value!)
                 }
                 
-                if let queue = queue {
-                    dispatch_async(queue, closure)
+                if let uQueue = queue {
+                    dispatch_async(uQueue, closure)
                 } else {
                     closure()
                 }
@@ -143,8 +143,8 @@ class IOU<T> {
                     observer(self.error!)
                 }
                 
-                if let queue = queue {
-                    dispatch_async(queue, closure)
+                if let uQueue = queue {
+                    dispatch_async(uQueue, closure)
                 } else {
                     closure()
                 }
@@ -166,11 +166,29 @@ public struct IOUHandler<T> {
         self.iou = IOU<T>()
     }
     
-    func reject(error: ErrorType) {
-        self.iou.reject(error)
+    func reject(error: ErrorType, queue: dispatch_queue_t? = nil) {
+
+        let closure = {
+            self.iou.reject(error)
+        }
+        
+        if let uQueue = queue {
+            dispatch_async(uQueue, closure)
+        } else {
+            closure()
+        }
     }
     
-    func resolve(value: T) {
-        self.iou.resolve(value)
+    func resolve(value: T, queue: dispatch_queue_t? = nil) {
+
+        let closure = {
+            self.iou.resolve(value)
+        }
+
+        if let uQueue = queue {
+            dispatch_async(uQueue, closure)
+        } else {
+            closure()
+        }
     }
 }

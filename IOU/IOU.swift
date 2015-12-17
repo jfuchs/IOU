@@ -166,7 +166,11 @@ public struct IOUHandler<T> {
         self.iou = IOU<T>()
     }
     
-    func reject(error: ErrorType, queue: dispatch_queue_t? = nil) {
+    func reject(error: ErrorType) {
+        self.reject(error, queue: nil)
+    }
+    
+    func reject(error: ErrorType, queue: dispatch_queue_t?) {
 
         let closure = {
             self.iou.reject(error)
@@ -179,7 +183,11 @@ public struct IOUHandler<T> {
         }
     }
     
-    func resolve(value: T, queue: dispatch_queue_t? = nil) {
+    func resolve(value: T) {
+        self.resolve(value, queue: nil)
+    }
+    
+    func resolve(value: T, queue: dispatch_queue_t?) {
 
         let closure = {
             self.iou.resolve(value)

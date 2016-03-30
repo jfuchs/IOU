@@ -10,23 +10,19 @@ import Foundation
 
 // MARK: - IOUState
 
-private enum IOUState {
-    case Pending, Rejected, Resolved
+private enum IOUState<T> {
+    case Pending
+    case Rejected(ErrorType)
+    case Resolved(T)
 }
 
 // MARK: - IOU
 
 class IOU<T> {
     
-    private var error: ErrorType?
-    private var value: T? = nil
-    private var state: IOUState = .Pending
+    private var state: IOUState<T> = .Pending
     private var onErrorObservers: [((ErrorType) -> Void, dispatch_queue_t?)] = []
     private var onValueObservers: [((T) -> Void, dispatch_queue_t?)] = []
-    
-    private lazy var serialQueue: dispatch_queue_t = {
-        return dispatch_queue_create("us.oladipo.iou", DISPATCH_QUEUE_SERIAL)
-    }()
     
     // MARK:- Reject
     
@@ -37,16 +33,18 @@ class IOU<T> {
     func onError(queue: dispatch_queue_t?, observer: (ErrorType) -> Void) -> IOU<T> {
         let observers = self.onErrorObservers + [(observer, queue)]
         self.onErrorObservers = observers
-        
-        if self.state != .Pending {
+
+        switch self.state {
+        case .Pending:
             self.callAndRemoveObservers()
+        default: break
         }
-        
+
         return self
     }
     
     private func reject(error: ErrorType) {
-        self.updateState(.Rejected, value: nil, error: error)
+        self.state = .Rejected(error)
         self.callAndRemoveObservers()
     }
     
@@ -59,16 +57,18 @@ class IOU<T> {
     func onValue(queue: dispatch_queue_t?, observer: (T) -> Void) -> IOU<T> {
         let observers = self.onValueObservers + [(observer, queue)]
         self.onValueObservers = observers
-        
-        if self.state != .Pending {
+
+        switch self.state {
+        case .Pending:
             self.callAndRemoveObservers()
+        default: break
         }
-        
+
         return self
     }
     
     private func resolve(value: T) {
-        self.updateState(.Resolved, value: value, error: nil)
+        self.state = .Resolved(value)
         self.callAndRemoveObservers()
     }
     
@@ -107,53 +107,41 @@ class IOU<T> {
     }
     
     // MARK: Updating state
-    
-    private func updateState(state: IOUState, value: T?, error: ErrorType?) {
-        dispatch_sync(self.serialQueue) {
-            if self.state == .Pending {
-                self.state = state
-                
-                if let uValue = value {
-                    self.value = uValue
-                } else if let uError = error {
-                    self.error = uError
-                }
-            }
-        }
-    }
-    
+
     private func callAndRemoveObservers() {
-        if self.state == .Resolved {
+        switch self.state {
+        case .Resolved(let value):
             for (observer, queue) in self.onValueObservers {
-                
+
                 let closure = {
-                    observer(self.value!)
+                    observer(value)
                 }
-                
+
                 if let uQueue = queue {
                     dispatch_async(uQueue, closure)
                 } else {
                     closure()
                 }
             }
-        } else if self.state == .Rejected {
+
+        case .Rejected(let error):
             for (observer, queue) in self.onErrorObservers {
-                
+
                 let closure = {
-                    observer(self.error!)
+                    observer(error)
                 }
-                
+
                 if let uQueue = queue {
                     dispatch_async(uQueue, closure)
                 } else {
                     closure()
                 }
             }
+        default: break
         }
-        
+
         self.onErrorObservers = []
         self.onValueObservers = []
-        
     }
 }
 
